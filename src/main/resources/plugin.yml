@@ -1,0 +1,17 @@
+name: KSRLobbyClient
+version: '1.0-SNAPSHOT'
+main: ch.ksrminecraft.kSRLobbyClient.KSRLobbyClient
+api-version: '1.21'
+authors: [ Timy Liniger ]
+description: writes rankpoint to global DB
+website: https://ksrminecraft.ch/
+commands:
+  echotest:
+    description: Führt einen Echotest zum Proxy aus
+    usage: /echotest
+    permission: ksrlobbyclient.echotest
+
+permissions:
+  ksrlobbyclient.echotest:
+    description: Erlaubt die Nutzung von /echotest
+    default: op
