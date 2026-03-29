@@ -1,10 +1,14 @@
 package ch.ksrminecraft.kSRLobbyClient.listeners;
 
 import ch.ksrminecraft.kSRLobbyClient.KSRLobbyClient;
-import com.google.common.io.ByteArrayDataInput;
-import com.google.common.io.ByteStreams;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.messaging.PluginMessageListener;
+
+import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteStreams;
+
+import java.util.UUID;
 
 public class PluginMessageListenerImpl implements PluginMessageListener {
 
@@ -24,13 +28,44 @@ public class PluginMessageListenerImpl implements PluginMessageListener {
             ByteArrayDataInput in = ByteStreams.newDataInput(message);
             String subChannel = in.readUTF();
 
-            if ("ECHO_REPLY".equals(subChannel)) {
-                String replyMessage = in.readUTF();
-                player.sendMessage("§a[Proxy-Reply] " + replyMessage);
+            switch (subChannel) {
+                case "ECHO_REPLY": {
+                    String replyMessage = in.readUTF();
+                    player.sendMessage("§a[Proxy-Reply] " + replyMessage);
+                    plugin.debug("ECHO_REPLY empfangen für " + player.getName() + ": " + replyMessage);
+                    break;
+                }
 
-                plugin.debug("ECHO_REPLY empfangen für " + player.getName() + ": " + replyMessage);
-            } else {
-                plugin.debug("Unbekannter SubChannel empfangen: " + subChannel);
+                case "TP_WORLD": {
+                    String uuidStr = in.readUTF();
+                    String worldName = in.readUTF();
+
+                    UUID uuid;
+                    try {
+                        uuid = UUID.fromString(uuidStr);
+                    } catch (IllegalArgumentException ex) {
+                        plugin.getLogger().warning("[KSRLobbyClient] TP_WORLD: ungültige UUID -> " + uuidStr);
+                        return;
+                    }
+
+                    plugin.debug("TP_WORLD empfangen: uuid=" + uuid + " world=" + worldName);
+
+                    plugin.setPendingTeleport(uuid, worldName);
+
+                    Player target = Bukkit.getPlayer(uuid);
+                    if (target != null) {
+                        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                            plugin.debug("TP_WORLD delayed execution for " + target.getName() + " -> " + worldName);
+                            plugin.tryExecutePendingTeleport(target);
+                        }, 10L);
+                    } else {
+                        plugin.debug("TP_WORLD: Spieler noch nicht verfügbar -> pending gespeichert");
+                    }
+                    break;
+                }
+
+                default:
+                    plugin.debug("Unbekannter SubChannel empfangen: " + subChannel);
             }
 
         } catch (Exception e) {
