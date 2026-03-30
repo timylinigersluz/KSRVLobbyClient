@@ -9,6 +9,7 @@ import ch.ksrminecraft.kSRLobbyClient.listeners.WorldChangeListener;
 import ch.ksrminecraft.kSRLobbyClient.utils.PluginMessageSender;
 import ch.ksrminecraft.kSRLobbyClient.utils.ZoneConfigManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -23,6 +24,9 @@ public class KSRLobbyClient extends JavaPlugin {
     private boolean debugEnabled = false;
 
     private final Map<UUID, String> pendingTeleports = new ConcurrentHashMap<>();
+
+    // requestId -> gespeicherte Sender-Position für TPHERE
+    private final Map<String, Location> pendingTphereLocations = new ConcurrentHashMap<>();
 
     // Spielerstatus für /lobby-/hub-Zonen
     private final Map<UUID, Boolean> lobbyCommandAllowed = new ConcurrentHashMap<>();
@@ -68,6 +72,13 @@ public class KSRLobbyClient extends JavaPlugin {
     public void onDisable() {
         Bukkit.getMessenger().unregisterOutgoingPluginChannel(this, CHANNEL);
         Bukkit.getMessenger().unregisterIncomingPluginChannel(this, CHANNEL);
+
+        pendingTeleports.clear();
+        pendingTphereLocations.clear();
+        lobbyCommandAllowed.clear();
+        lobbyCommandRestricted.clear();
+        lobbyCommandWorld.clear();
+
         getLogger().info("[KSRLobbyClient] Deaktiviert! Channel war: \"" + CHANNEL + "\"");
     }
 
@@ -126,6 +137,33 @@ public class KSRLobbyClient extends JavaPlugin {
             getLogger().warning("[KSRLobbyClient] PendingTeleport: teleport fehlgeschlagen für "
                     + player.getName() + " -> " + worldName);
         }
+    }
+
+    public void storePendingTphereLocation(String requestId, Location location) {
+        if (requestId == null || requestId.isBlank() || location == null) {
+            return;
+        }
+
+        pendingTphereLocations.put(requestId, location.clone());
+        debug("pendingTphereLocations.put " + requestId
+                + " -> " + location.getWorld().getName()
+                + " "
+                + location.getBlockX() + ","
+                + location.getBlockY() + ","
+                + location.getBlockZ());
+    }
+
+    public Location getPendingTphereLocation(String requestId) {
+        Location location = pendingTphereLocations.get(requestId);
+        return location == null ? null : location.clone();
+    }
+
+    public void removePendingTphereLocation(String requestId) {
+        if (requestId == null || requestId.isBlank()) {
+            return;
+        }
+        pendingTphereLocations.remove(requestId);
+        debug("pendingTphereLocations.remove " + requestId);
     }
 
     public void debug(String msg) {

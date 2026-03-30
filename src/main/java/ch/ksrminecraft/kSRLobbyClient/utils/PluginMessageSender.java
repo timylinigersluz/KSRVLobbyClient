@@ -3,6 +3,7 @@ package ch.ksrminecraft.kSRLobbyClient.utils;
 import ch.ksrminecraft.kSRLobbyClient.KSRLobbyClient;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import java.util.UUID;
@@ -87,6 +88,56 @@ public class PluginMessageSender {
             player.sendPluginMessage(plugin, KSRLobbyClient.CHANNEL, payload);
         } catch (Exception e) {
             plugin.getLogger().severe("[KSRLobbyClient] Fehler beim LOBBY_ZONE_UPDATE: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public static void sendTpherePrepared(KSRLobbyClient plugin, Player carrier, String requestId) {
+        try {
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            out.writeUTF("TPHERE_PREPARED");
+            out.writeUTF(requestId);
+
+            byte[] payload = out.toByteArray();
+            plugin.debug("TPHERE_PREPARED sending: carrier=" + carrier.getName()
+                    + " requestId=" + requestId
+                    + " bytes=" + payload.length);
+
+            carrier.sendPluginMessage(plugin, KSRLobbyClient.CHANNEL, payload);
+        } catch (Exception e) {
+            plugin.getLogger().severe("[KSRLobbyClient] Fehler beim TPHERE_PREPARED: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public static void sendTphereResult(KSRLobbyClient plugin, Player preferredCarrier, String requestId, boolean success, String message) {
+        try {
+            Player carrier = preferredCarrier;
+            if (carrier == null || !carrier.isOnline()) {
+                carrier = Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+            }
+
+            if (carrier == null) {
+                plugin.getLogger().warning("[KSRLobbyClient] TPHERE_RESULT konnte nicht gesendet werden: kein Online-Spieler als Carrier verfügbar.");
+                return;
+            }
+
+            ByteArrayDataOutput out = ByteStreams.newDataOutput();
+            out.writeUTF("TPHERE_RESULT");
+            out.writeUTF(requestId);
+            out.writeBoolean(success);
+            out.writeUTF(message == null ? "" : message);
+
+            byte[] payload = out.toByteArray();
+            plugin.debug("TPHERE_RESULT sending: carrier=" + carrier.getName()
+                    + " requestId=" + requestId
+                    + " success=" + success
+                    + " message=" + message
+                    + " bytes=" + payload.length);
+
+            carrier.sendPluginMessage(plugin, KSRLobbyClient.CHANNEL, payload);
+        } catch (Exception e) {
+            plugin.getLogger().severe("[KSRLobbyClient] Fehler beim TPHERE_RESULT: " + e.getMessage());
             e.printStackTrace();
         }
     }
